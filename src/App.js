@@ -1,8 +1,11 @@
 import Header from "./components/Header";
+import Footer from "./components/Footer";
 import Tasks from "./components/Tasks";
 import AddTask from "./components/AddTask";
+import About from "./components/About";
 
 import { useState, useEffect } from "react";
+import { BrowserRouter as Router, Route } from "react-router-dom";
 
 function App() {
   const [showAddTask, setShowAddTask] = useState(false);
@@ -23,10 +26,22 @@ function App() {
     return data;
   };
 
-  const addTask = (task) => {
-    const id = Math.floor(Math.random() * 10000) + 1;
-    const newTask = { id, ...task };
-    setTasks([...tasks, newTask]);
+  const addTask = async (task) => {
+    const res = await fetch("http://localhost:5000/tasks", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(task),
+    });
+
+    const data = await res.json();
+
+    setTasks([...tasks, data]);
+
+    // const id = Math.floor(Math.random() * 10000) + 1;
+    // const newTask = { id, ...task };
+    // setTasks([...tasks, newTask]);
   };
 
   const deleteTask = async (id) => {
@@ -36,26 +51,63 @@ function App() {
     setTasks(tasks.filter((task) => task.id !== id));
   };
 
-  const toggleReminder = (id) => {
+  const toggleReminder = async (id) => {
+    const taskToToggle = await fetchTask(id);
+    const updTask = { ...taskToToggle, reminder: !taskToToggle.reminder };
+
+    const res = await fetch(`http://localhost:5000/tasks/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-type": "application/json",
+      },
+      body: JSON.stringify(updTask),
+    });
+    const data = await res.json();
+
     setTasks(
       tasks.map((task) =>
-        task.id === id ? { ...task, reminder: !task.reminder } : task
+        task.id === id ? { ...task, reminder: data.reminder } : task
       )
     );
   };
+
+  const fetchTask = async (id) => {
+    const res = await fetch(`http://localhost:5000/tasks/${id}`);
+    const data = await res.json();
+    console.log(data);
+    return data;
+  };
+
   return (
-    <div className="container">
-      <Header
-        onAdd={() => setShowAddTask(!showAddTask)}
-        showAdd={showAddTask}
-      />
-      {showAddTask && <AddTask onAdd={addTask} />}
-      {tasks.length > 0 ? (
-        <Tasks onDelete={deleteTask} onToggle={toggleReminder} tasks={tasks} />
-      ) : (
-        "No Task"
-      )}
-    </div>
+    <Router>
+      <div className="container">
+        <Header
+          onAdd={() => setShowAddTask(!showAddTask)}
+          showAdd={showAddTask}
+        />
+
+        <Route
+          path="/"
+          exact
+          render={(props) => (
+            <>
+              {showAddTask && <AddTask onAdd={addTask} />}
+              {tasks.length > 0 ? (
+                <Tasks
+                  onDelete={deleteTask}
+                  onToggle={toggleReminder}
+                  tasks={tasks}
+                />
+              ) : (
+                "No Task"
+              )}
+            </>
+          )}
+        />
+        <Route path="/about" component={About} />
+        <Footer />
+      </div>
+    </Router>
   );
 }
 
